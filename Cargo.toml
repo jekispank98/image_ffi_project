@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "image_processor",
+    "blur_plugin",
+    "mirror_plugin"
+]
+resolver = "2"
+[workspace.package]
+name = "image_ffi_project"
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+clap = "4"
+thiserror = "2.0"
