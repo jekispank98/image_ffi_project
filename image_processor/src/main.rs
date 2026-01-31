@@ -1,20 +1,50 @@
-use std::fs::File;
-use std::path::PathBuf;
 use clap::Parser;
-use image::ImageReader;
-use crate::args::Args;
+use image::GenericImageView;
+use std::fs;
+use std::path::PathBuf;
 
-pub mod args;
+mod plugin_loader;
 
-fn main() {
-    let args = Args::parse();
-    let file_path = args.input;
-    if check_is_image_exist(&file_path) {
-        let img = ImageReader::open(&file_path).expect("Couldn't open the image").decode();
-    }
+#[derive(Parser)]
+struct Args {
+    #[arg(long)]
+    input: PathBuf,
+    #[arg(long)]
+    output: PathBuf,
+    #[arg(long)]
+    plugin: String,
+    #[arg(long)]
+    is_horizontal: bool,
+    #[arg(long, default_value = "target/debug")]
+    plugin_path: PathBuf,
 }
 
-fn check_is_image_exist(path: &String) -> bool {
-    let path_buf = PathBuf::from(path);
-    path_buf.exists()
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+
+    let img = image::open(&args.input)?.to_rgba8();
+    let (width, height) = img.dimensions();
+    let mut raw_pixels = img.into_raw();
+
+    let lib_ext = if cfg!(target_os = "windows") { "dll" } else { "so" };
+    let lib_name = if cfg!(target_os = "linux") {
+        format!("lib{}.{}", args.plugin, lib_ext)
+    } else {
+        format!("{}.{}", args.plugin, lib_ext)
+    };
+
+    let full_plugin_path = args.plugin_path.join(lib_name);
+    let plugin = plugin_loader::Plugin::load(&full_plugin_path)?;
+
+    // 4. Обработка (модификация на месте)
+    println!("Обработка через {}...", args.plugin);
+    plugin.execute(width, height, &mut raw_pixels, args.is_horizontal);
+
+    // 5. Сохранение
+    let output_img = image::RgbaImage::from_raw(width, height, raw_pixels)
+        .ok_or("Ошибка при создании выходного изображения")?;
+    output_img.save(&args.output)?;
+
+    println!("Готово! Результат сохранен в {:?}", args.output);
+    Ok(())
 }
