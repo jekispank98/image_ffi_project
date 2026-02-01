@@ -1,13 +1,18 @@
+use std::ffi::{c_char, CStr};
+
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn process_image(
     width: u32,
     height: u32,
     rgba_data: *mut u8,
-    is_horizontal: bool,
+    params: *const c_char,
 ) {
-    if rgba_data.is_null() {
-        return;
-    }
+    if rgba_data.is_null() || params.is_null() { return; }
+
+    let c_str = unsafe { CStr::from_ptr(params) };
+    let params_str = c_str.to_string_lossy();
+
+    let is_horizontal = params_str.contains("horizontal");
 
     let pixels = std::slice::from_raw_parts_mut(rgba_data as *mut u32, (width * height) as usize);
 

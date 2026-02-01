@@ -1,8 +1,8 @@
 use libloading::{Library, Symbol};
 use std::path::Path;
-use std::ffi::CString;
+use std::ffi::{c_char, CString};
 
-type ProcessFn = unsafe extern "C" fn(u32, u32, *mut u8, bool);
+type ProcessFn = unsafe extern "C" fn(u32, u32, *mut u8, *const c_char);
 
 pub struct Plugin {
     _lib: Library,
@@ -21,7 +21,7 @@ impl Plugin {
         }
     }
 
-    pub fn execute(&self, width: u32, height: u32, data: &mut [u8], is_horizontal: bool) {
+    pub fn execute(&self, width: u32, height: u32, data: &mut [u8], is_horizontal: *const c_char) {
         unsafe {
             (self.func)(width, height, data.as_mut_ptr(), is_horizontal);
         }

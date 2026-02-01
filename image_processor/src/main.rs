@@ -1,6 +1,4 @@
 use clap::Parser;
-use image::GenericImageView;
-use std::fs;
 use std::path::PathBuf;
 
 mod plugin_loader;
@@ -14,7 +12,7 @@ struct Args {
     #[arg(long)]
     plugin: String,
     #[arg(long)]
-    is_horizontal: bool,
+    params: PathBuf,
     #[arg(long, default_value = "target/debug")]
     plugin_path: PathBuf,
 }
@@ -26,7 +24,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (width, height) = img.dimensions();
     let mut raw_pixels = img.into_raw();
 
-    let lib_ext = if cfg!(target_os = "windows") { "dll" } else { "so" };
+    let lib_ext = if cfg!(target_os = "windows") {
+        "dll"
+    } else {
+        "so"
+    };
     let lib_name = if cfg!(target_os = "linux") {
         format!("lib{}.{}", args.plugin, lib_ext)
     } else {
@@ -36,11 +38,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let full_plugin_path = args.plugin_path.join(lib_name);
     let plugin = plugin_loader::Plugin::load(&full_plugin_path)?;
 
-    // 4. Обработка (модификация на месте)
-    println!("Обработка через {}...", args.plugin);
-    plugin.execute(width, height, &mut raw_pixels, args.is_horizontal);
+    let params_content =
+        std::fs::read_to_string(&args.params).expect("Не удалось прочитать файл параметров");
+    let c_params = std::ffi::CString::new(params_content).unwrap();
 
-    // 5. Сохранение
+    // let is_horizontal = params_content.to_lowercase().contains("horizontal");
+    println!("Обработка через {}...", args.plugin);
+    plugin.execute(width, height, &mut raw_pixels, c_params.as_ptr());
+
     let output_img = image::RgbaImage::from_raw(width, height, raw_pixels)
         .ok_or("Ошибка при создании выходного изображения")?;
     output_img.save(&args.output)?;
