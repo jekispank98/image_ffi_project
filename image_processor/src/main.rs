@@ -2,6 +2,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 mod plugin_loader;
+mod error;
 
 #[derive(Parser)]
 struct Args {
@@ -39,17 +40,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let plugin = plugin_loader::Plugin::load(&full_plugin_path)?;
 
     let params_content =
-        std::fs::read_to_string(&args.params).expect("Не удалось прочитать файл параметров");
-    let c_params = std::ffi::CString::new(params_content).unwrap();
+        std::fs::read_to_string(&args.params).expect("Could not read params file");
+    let c_params = std::ffi::CString::new(params_content)?;
 
-    // let is_horizontal = params_content.to_lowercase().contains("horizontal");
-    println!("Обработка через {}...", args.plugin);
+    println!("Process via {}...", args.plugin);
     plugin.execute(width, height, &mut raw_pixels, c_params.as_ptr());
 
     let output_img = image::RgbaImage::from_raw(width, height, raw_pixels)
-        .ok_or("Ошибка при создании выходного изображения")?;
+        .ok_or("Create output image error")?;
     output_img.save(&args.output)?;
 
-    println!("Готово! Результат сохранен в {:?}", args.output);
+    println!("Done! The result is saved. {:?}", args.output);
     Ok(())
 }

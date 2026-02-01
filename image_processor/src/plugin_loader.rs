@@ -1,6 +1,6 @@
 use libloading::{Library, Symbol};
+use std::ffi::c_char;
 use std::path::Path;
-use std::ffi::{c_char, CString};
 
 type ProcessFn = unsafe extern "C" fn(u32, u32, *mut u8, *const c_char);
 
@@ -13,7 +13,6 @@ impl Plugin {
     pub fn load(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         unsafe {
             let lib = Library::new(path)?;
-            // Загружаем символ и "забываем" о лайфтайме библиотеки внутри структуры
             let func: Symbol<ProcessFn> = lib.get(b"process_image")?;
             let func = std::mem::transmute::<Symbol<ProcessFn>, Symbol<'static, ProcessFn>>(func);
 
