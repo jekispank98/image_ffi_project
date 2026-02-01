@@ -10,7 +10,7 @@ pub struct Plugin {
 }
 
 impl Plugin {
-    pub fn load(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load(path: &Path) -> Result<Self, libloading::Error> {
         unsafe {
             let lib = Library::new(path)?;
             let func: Symbol<ProcessFn> = lib.get(b"process_image")?;
